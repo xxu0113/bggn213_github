@@ -1,0 +1,143 @@
+---
+title: "nov_1_class10"
+author: "xiaowen xu"
+format: pdf
+editor: visual
+---
+
+## 
+
+what is in the database anyway?
+
+I grabed summary data from <https://www.rcsb.org/stats/summary>
+
+```{r}
+fna.data <- "/Users/xiaowen/Downloads/Data Export Summary.csv"
+pdbstats <- read.csv(fna.data, row.names=1)
+pdbstats
+```
+
+-   
+
+
+
+```{r}
+x <- pdbstats$Total
+x
+as.numeric(gsub(",", "", x))
+```
+
+```{r}
+convert_comma_numbers <-function(x){
+  x <-gsub(',','',x)
+  x<-as.numeric(x)
+  return(x)}
+```
+
+```{r}
+n.total <- sum(convert_comma_numbers(pdbstats$Total))
+n.total
+```
+
+-   **Q1:** What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy. X-Ray: 83.26%, EM:10.23%
+
+    the apply() function is very useful as it can take any function and apply it over either the rows or cols of a data.frame
+
+```{r}
+colSums(apply(pdbstats,2,convert_comma_numbers))/n.total
+```
+
+```{r}
+library(readr)
+fna.data <- "/Users/xiaowen/Downloads/Data Export Summary.csv"
+pdb <- read_csv(fna.data)
+```
+
+```{r}
+n.xray <-sum(convert_comma_numbers(pdbstats$X.ray))
+n.em<-sum(convert_comma_numbers(pdbstats$EM))
+```
+
+```{r}
+n.xray/n.total *100
+n.em/n.total *100
+```
+
+-   **Q2:** What proportion of structures in the PDB are protein?
+
+    ```{r}
+    n.protein <-convert_comma_numbers(pdbstats["Protein (only)", "Total"])
+    n.protein/n.total *100
+    ```
+
+
+    **Q4**: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure?
+
+It is only showing the oxygen atom. because H is too small to be seen at this resolution.
+
+-   **Q5**: There is a critical “conserved” water molecule in the binding site. Can you identify this water molecule? What residue number does this water molecule have
+
+yes. H308
+
+-   **Q6**: Generate and save a figure clearly showing the two distinct chains of HIV-protease along with the ligand. You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend *“Ball & Stick”* for these side-chains). Add this figure to your Quarto document.
+
+![](1HSG for assign.png)
+
+**Discussion Topic:** Can you think of a way in which indinavir, or even larger ligands and substrates, could enter the binding site?
+
+Q7: \[Optional\] As you have hopefully observed HIV protease is a homodimer (i.e. it is composed of two identical chains). With the aid of the graphic display can you identify secondary structure elements that are likely to only form in the dimer rather than the monomer?
+
+## Bio3D package for structural bioinformatics
+```{r}
+library(bio3d)
+pdb <- read.pdb("1hsg")
+pdb
+```
+
+Q7: How many amino acid residues are there in this pdb object? 198 residues
+
+Q8: Name one of the two non-protein residues? HOH, MK1
+
+Q9: How many protein chains are in this structure? 2 chains
+```{r}
+attributes(pdb)
+```
+```{r}
+head(pdb$atom)
+```
+```{r}
+pdbseq(pdb)
+```
+```{r}
+length(pdbseq(pdb))
+```
+## functional dynamics prediction
+
+```{r}
+adk <- read.pdb("6s36")
+summary(adk)
+```
+```{r}
+source("https://tinyurl.com/viewpdb")
+library(r3dmol)
+
+view.pdb(pdb,backgroundColor="pink")
+```
+
+```{r}
+view.pdb(adk)
+```
+
+```{r}
+modes <- nma(adk)
+plot(modes)
+```
+
+```{r}
+adk <- read.pdb("6s36")
+modes <- nma(adk)
+mktrj(modes,pdb=adk, file="adk.pdb")
+```
+
+
+

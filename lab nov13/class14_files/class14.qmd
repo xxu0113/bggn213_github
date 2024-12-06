@@ -1,0 +1,215 @@
+---
+title: "class14:rnaseq mini"
+format: gfm
+editor: visual
+---
+
+## import data
+
+counts metadata what DESeq calls colDATA as it describes the columns in the counts \## data cleanup
+
+```{r}
+counts <- read.csv("GSE37704_featurecounts.csv", row.names=1)
+metadata <-  read.csv("GSE37704_metadata.csv")
+head(counts)
+head(metadata)
+```
+
+we want the columns in counts to match the rows in metadata
+
+```{r}
+colnames(counts)
+```
+
+```{r}
+metadata$id
+```
+
+we can get rid of the first column in counts
+
+```{r}
+countData <- counts[,-1]
+head(countData)
+```
+
+```{r}
+colnames(countData)
+```
+
+```{r}
+colnames(countData) == metadata$id
+```
+
+```{r}
+
+all(colnames(countData) == metadata$id)
+```
+
+```{r}
+x <- c(T,F,T,T)
+if(all(x)){
+  cat("Me happy")
+}  else{
+  cat("Me no happy")
+}
+```
+
+##filter outzero counts it is practice to remove any genes that we have no data for.
+
+```{r}
+tp.keep.inds <- rowSums(countData) > 0
+cleanCounts <- countData[tp.keep.inds,]
+head(cleanCounts)
+```
+
+## setup fro DESeup
+
+```{r}
+#/ message: false
+library(DESeq2)
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=cleanCounts,
+                       colData=metadata,
+                       design= ~condition)
+```
+
+##DESeq
+
+```{r}
+dds <- DESeq(dds)
+res <-results(dds)
+```
+
+##Inspect Restuls
+
+```{r}
+head(res)
+```
+
+##data viz
+
+```{r}
+plot(res$log2FoldChange,-log(res$padj))
+```
+
+##pathway analysis
+
+```{r}
+head(res)
+```
+
+##anotation of genes
+
+first I need to translate my ensemble id in my res object. to entrez and gene symbol formats
+
+for this I will use the AnnotationDbi package and it is mapids() function,
+
+```{r}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+lets map it to symbol, entrezid, genename
+
+```{r}
+res$genename <- mapIds(org.Hs.eg.db,keys=rownames(res),keytype="ENSEMBL",column="GENENAME")
+res$entrez_id <- mapIds(org.Hs.eg.db,keys=rownames(res),keytype="ENSEMBL",column="ENTREZID")
+res$symbol <-mapIds(org.Hs.eg.db,keys=rownames(res),keytype="ENSEMBL",column="SYMBOL")
+```
+
+```{r}
+head(res)
+```
+
+Before going further, lets focus in on a subset of top genes, we can use as a starting point log2FC of +2/-2 and a adjusted p value of 0.05.
+
+```{r}
+top.inds <- (abs(res$log2FoldChange) >2) & (abs(res$padj) < 0.05)
+top.inds[is.na(top.inds)] <- FALSE
+```
+
+lets save our top genes to file
+
+```{r}
+top.genes <- res[top.inds, ]
+write.csv(top.genes, file = "top_genes.csv", row.names = FALSE)
+
+```
+
+```{r}
+
+
+library(gage)
+library(gageData)
+library(pathview)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+# Examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+the gage function wants a vector of importance as input with gene names as labels kegg speaks entrez
+
+```{r}
+
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez_id
+head(foldchanges)
+
+```
+
+run gage with these values
+
+```{r}
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+
+
+```
+
+```{r}
+head(keggres$less)
+```
+
+```{r}
+pathview(foldchanges,pathway.id="hsa04110")
+```
+
+```{r}
+library(gage)
+library(gageData)
+
+data(go.sets.hs)
+data(go.subs.hs)
+
+gobpsets=go.sets.hs[go.subs.hs$BP]
+gores <- gage(foldchanges,gsets=gobpsets)
+head(gores$less)
+```
+
+to run reactome 
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+
+```
+```{r}
+sig_genes
+```
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+
+```
+
+![](R-HSA-68886.png)
