@@ -481,7 +481,7 @@ pathview(gene.data=foldchanges, pathway.id="hsa05310")
 
     'select()' returned 1:1 mapping between keys and columns
 
-    Info: Working in directory /Users/xiaowen/Desktop/lab nov13
+    Info: Working in directory /Users/xiaowen/Desktop/dec 4th/bggn213_github/nov13_files
 
     Info: Writing image file hsa05310.pathview.png
 
